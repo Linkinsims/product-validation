@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Validation Engine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg:       #07080c;
+  --bg2:      #0d0f16;
+  --bg3:      #13151f;
+  --bg4:      #1a1d2b;
+  --bg5:      #20243a;
+  --border:   rgba(255,255,255,0.06);
+  --border2:  rgba(255,255,255,0.11);
+  --text:     #e2e4f0;
+  --text2:    #8890b0;
+  --text3:    #4a5070;
+  --kill:     #ff3b5c;
+  --kill-bg:  rgba(255,59,92,0.1);
+  --kill-b:   rgba(255,59,92,0.25);
+  --test:     #f5a623;
+  --test-bg:  rgba(245,166,35,0.1);
+  --test-b:   rgba(245,166,35,0.25);
+  --scale:    #00d68f;
+  --scale-bg: rgba(0,214,143,0.1);
+  --scale-b:  rgba(0,214,143,0.25);
+  --accent:   #5b7fff;
+  --accent2:  #8ba4ff;
+  --warn:     #f5a623;
+  --r:        8px;
+  --r2:       12px;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── HEADER ─────────────────────────────── */
+.header {
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg2);
+  position: sticky; top: 0; z-index: 200;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg,#5b7fff,#00d68f); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff; }
+.header-title { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.header-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top:1px; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.version-tag { font-family:var(--mono); font-size:10px; color:var(--text3); background:var(--bg4); border:1px solid var(--border); padding:4px 10px; border-radius:20px; }
+
+/* ── NAV TABS ────────────────────────────── */
+.nav {
+  display:flex; gap:2px; padding:14px 28px;
+  border-bottom:1px solid var(--border);
+  background: var(--bg2);
+  overflow-x:auto;
+}
+.nav-tab {
+  padding:7px 16px; border-radius:var(--r);
+  border:none; background:transparent;
+  color:var(--text3); font-size:12px; font-weight:700;
+  cursor:pointer; transition:all 0.15s;
+  white-space:nowrap; font-family:var(--sans);
+  letter-spacing:0.2px;
+}
+.nav-tab:hover { background:var(--bg4); color:var(--text2); }
+.nav-tab.active { background:var(--accent); color:#fff; }
+
+/* ── MAIN LAYOUT ─────────────────────────── */
+.main { padding:26px 28px; max-width:1440px; }
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ── SECTION HEADER ──────────────────────── */
+.sec-head { margin-bottom:22px; }
+.sec-title { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.sec-sub { font-size:13px; color:var(--text2); margin-top:4px; font-family:var(--mono); }
+
+/* ── GRID HELPERS ────────────────────────── */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+/* ── CARD ────────────────────────────────── */
+.card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:20px;
+}
+.card-title {
+  font-size:10px; font-weight:700; color:var(--text3);
+  text-transform:uppercase; letter-spacing:1px;
+  margin-bottom:16px; font-family:var(--mono);
+}
+
+/* ── METRIC CARD ─────────────────────────── */
+.mcard {
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:16px 18px;
+}
+.mcard-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; font-family:var(--mono); }
+.mcard-val { font-size:26px; font-weight:800; letter-spacing:-1px; font-family:var(--mono); }
+.mcard-sub { font-size:11px; color:var(--text2); margin-top:4px; font-family:var(--mono); }
+
+/* ── DECISION VERDICT ────────────────────── */
+.verdict-banner {
+  border-radius:var(--r2);
+  padding:24px 28px;
+  border:2px solid;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:16px;
+  margin-bottom:24px;
+  transition:all 0.3s;
+}
+.verdict-banner.kill { border-color:var(--kill-b); background:var(--kill-bg); }
+.verdict-banner.test { border-color:var(--test-b); background:var(--test-bg); }
+.verdict-banner.scale { border-color:var(--scale-b); background:var(--scale-bg); }
+.verdict-banner.none { border-color:var(--border2); background:var(--bg3); }
+.verdict-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; font-family:var(--mono); margin-bottom:6px; }
+.verdict-title { font-size:30px; font-weight:800; letter-spacing:-1px; }
+.verdict-reason { font-size:13px; color:var(--text2); max-width:600px; margin-top:8px; line-height:1.6; font-family:var(--mono); }
+.verdict-score-wrap { text-align:right; }
+.verdict-score { font-size:52px; font-weight:800; letter-spacing:-3px; font-family:var(--mono); line-height:1; }
+.verdict-score-label { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; font-family:var(--mono); margin-top:2px; }
+
+/* ── INPUT FORM ──────────────────────────── */
+.input-group { margin-bottom:16px; }
+.input-label { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; font-family:var(--mono); }
+.input-hint { font-size:10px; color:var(--text3); font-weight:400; }
+input[type="number"], input[type="text"] {
+  width:100%; padding:11px 14px;
+  background:var(--bg3); border:1px solid var(--border2);
+  border-radius:var(--r); color:var(--text);
+  font-size:14px; font-family:var(--mono);
+  transition:border-color 0.15s; outline:none;
+}
+input[type="number"]:focus, input[type="text"]:focus {
+  border-color:var(--accent);
+}
+input[type="number"]::placeholder { color:var(--text3); }
+.input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.input-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+
+/* ── BUTTONS ─────────────────────────────── */
+.btn-primary {
+  padding:12px 24px; background:var(--accent);
+  color:#fff; border:none; border-radius:var(--r);
+  font-size:13px; font-weight:700; cursor:pointer;
+  font-family:var(--sans); letter-spacing:0.3px;
+  transition:opacity 0.15s; width:100%; margin-top:8px;
+}
+.btn-primary:hover { opacity:0.88; }
+.btn-primary:active { opacity:0.75; }
+.btn-danger {
+  padding:10px 20px; background:var(--kill-bg);
+  color:var(--kill); border:1px solid var(--kill-b);
+  border-radius:var(--r); font-size:12px; font-weight:700;
+  cursor:pointer; font-family:var(--sans);
+  transition:all 0.15s;
+}
+.btn-danger:hover { background:rgba(255,59,92,0.2); }
+.btn-sm {
+  padding:7px 14px; background:var(--bg4);
+  color:var(--text2); border:1px solid var(--border);
+  border-radius:var(--r); font-size:11px; font-weight:700;
+  cursor:pointer; font-family:var(--sans);
+  transition:all 0.15s; white-space:nowrap;
+}
+.btn-sm:hover { border-color:var(--border2); color:var(--text); }
+.btn-sm.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+/* ── STATUS PILL ─────────────────────────── */
+.pill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:4px 10px; border-radius:20px;
+  font-size:10px; font-weight:700; font-family:var(--mono);
+  text-transform:uppercase; letter-spacing:0.5px;
+  white-space:nowrap;
+}
+.pill.kill { background:var(--kill-bg); color:var(--kill); border:1px solid var(--kill-b); }
+.pill.test { background:var(--test-bg); color:var(--test); border:1px solid var(--test-b); }
+.pill.scale { background:var(--scale-bg); color:var(--scale); border:1px solid var(--scale-b); }
+.pill.neutral { background:var(--bg4); color:var(--text2); border:1px solid var(--border); }
+.pill.good { background:rgba(0,214,143,0.08); color:var(--scale); border:1px solid rgba(0,214,143,0.2); }
+.pill.bad { background:var(--kill-bg); color:var(--kill); border:1px solid var(--kill-b); }
+.pill.warn { background:var(--test-bg); color:var(--test); border:1px solid var(--test-b); }
+
+/* ── METRIC ROW ──────────────────────────── */
+.metric-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 0; border-bottom:1px solid var(--border);
+}
+.metric-row:last-child { border-bottom:none; }
+.metric-name { font-size:13px; color:var(--text2); font-family:var(--mono); }
+.metric-formula { font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
+.metric-value { font-size:16px; font-weight:700; font-family:var(--mono); }
+.metric-right { display:flex; align-items:center; gap:10px; }
+
+/* ── GAUGE BAR ───────────────────────────── */
+.gauge-row { margin-bottom:14px; }
+.gauge-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); margin-bottom:5px; font-family:var(--mono); }
+.gauge-track { height:8px; background:var(--bg4); border-radius:4px; overflow:hidden; position:relative; }
+.gauge-fill { height:100%; border-radius:4px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.gauge-threshold { position:absolute; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3); }
+
+/* ── TABLE ───────────────────────────────── */
+.tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.tbl th { text-align:left; padding:10px 14px; border-bottom:1px solid var(--border2); font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; font-family:var(--mono); white-space:nowrap; }
+.tbl td { padding:13px 14px; border-bottom:1px solid var(--border); vertical-align:middle; font-family:var(--mono); }
+.tbl tr:hover td { background:var(--bg3); }
+.tbl tr:last-child td { border-bottom:none; }
+
+/* ── CODE BLOCK ──────────────────────────── */
+.codeblock {
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:var(--r); padding:16px;
+  font-family:var(--mono); font-size:12px;
+  color:#a8d8b9; overflow-x:auto; line-height:1.8;
+}
+.ck { color:#79c7e3; } .cv { color:#ffb3a0; }
+.cs { color:#b5e48c; } .cc { color:#4a5070; }
+.cf { color:var(--accent2); }
+
+/* ── THRESHOLD SETTINGS ──────────────────── */
+.threshold-row {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:1px solid var(--border);
+}
+.threshold-row:last-child { border-bottom:none; }
+.threshold-name { font-size:12px; font-family:var(--mono); color:var(--text2); flex:1; }
+.threshold-input { width:100px; padding:7px 10px; background:var(--bg4); border:1px solid var(--border2); border-radius:var(--r); color:var(--text); font-family:var(--mono); font-size:12px; outline:none; text-align:center; }
+.threshold-input:focus { border-color:var(--accent); }
+.threshold-unit { font-size:11px; color:var(--text3); font-family:var(--mono); width:30px; }
+
+/* ── FUNNEL CHART ────────────────────────── */
+.funnel-stage {
+  display:flex; align-items:center; gap:14px;
+  margin-bottom:10px;
+}
+.funnel-bar-wrap { flex:1; }
+.funnel-bar-track { height:32px; background:var(--bg4); border-radius:var(--r); overflow:hidden; }
+.funnel-bar-fill { height:100%; display:flex; align-items:center; padding:0 12px; font-size:12px; font-weight:700; font-family:var(--mono); border-radius:var(--r); transition:width 0.7s cubic-bezier(0.4,0,0.2,1); white-space:nowrap; }
+.funnel-label { width:120px; font-size:11px; color:var(--text2); font-family:var(--mono); text-align:right; }
+.funnel-pct { width:50px; font-size:12px; font-weight:700; font-family:var(--mono); text-align:right; }
+.funnel-drop { font-size:10px; color:var(--kill); font-family:var(--mono); width:60px; text-align:right; }
+
+/* ── ALERT BOXES ─────────────────────────── */
+.alert { border-radius:var(--r); padding:13px 15px; font-size:12px; font-family:var(--mono); line-height:1.6; margin-bottom:10px; border:1px solid; }
+.alert.kill { background:var(--kill-bg); border-color:var(--kill-b); color:#ffb3be; }
+.alert.test { background:var(--test-bg); border-color:var(--test-b); color:#ffd08a; }
+.alert.scale { background:var(--scale-bg); border-color:var(--scale-b); color:#a0f5dc; }
+.alert.info { background:rgba(91,127,255,0.08); border-color:rgba(91,127,255,0.2); color:var(--accent2); }
+.alert-title { font-weight:700; margin-bottom:3px; }
+
+/* ── PRODUCT LIST ────────────────────────── */
+.product-item {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 16px;
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  background:var(--bg2);
+  margin-bottom:10px;
+  cursor:pointer;
+  transition:border-color 0.15s;
+}
+.product-item:hover { border-color:var(--border2); }
+.product-item.selected { border-color:var(--accent); background:rgba(91,127,255,0.05); }
+.product-item.kill-item { border-left:3px solid var(--kill); }
+.product-item.test-item { border-left:3px solid var(--test); }
+.product-item.scale-item { border-left:3px solid var(--scale); }
+.product-item.none-item { border-left:3px solid var(--text3); }
+.pi-name { font-size:14px; font-weight:700; flex:1; }
+.pi-meta { font-size:11px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
+.pi-profit { font-size:16px; font-weight:700; font-family:var(--mono); text-align:right; }
+.pi-profit.pos { color:var(--scale); }
+.pi-profit.neg { color:var(--kill); }
+
+/* ── CHART WRAP ──────────────────────────── */
+.chart-wrap { position:relative; width:100%; }
+
+/* ── ANIMATIONS ──────────────────────────── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.panel.active { animation:fadeIn 0.2s ease; }
+
+/* ── DIVIDER ─────────────────────────────── */
+.divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media(max-width:900px) {
+  .main{padding:16px;} .header{padding:14px 16px;} .nav{padding:10px 16px;}
+  .g2,.g3,.g4{grid-template-columns:1fr;}
+  .input-row,.input-row3{grid-template-columns:1fr;}
+  .verdict-title{font-size:22px;} .verdict-score{font-size:38px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">PV</div>
+    <div>
+      <div class="header-title">Product Validation Engine</div>
+      <div class="header-sub">kill · test · scale — data-driven decisions only</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="version-tag">v1.0 · SA Market</span>
+    <button class="btn-sm active" id="themeToggle">Dark</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-tab active" onclick="showPanel('dashboard')">Dashboard</button>
+  <button class="nav-tab" onclick="showPanel('input')">Input Data</button>
+  <button class="nav-tab" onclick="showPanel('metrics')">Metrics Engine</button>
+  <button class="nav-tab" onclick="showPanel('decision')">Decision Engine</button>
+  <button class="nav-tab" onclick="showPanel('funnel')">Funnel Analysis</button>
+  <button class="nav-tab" onclick="showPanel('products')">All Products</button>
+  <button class="nav-tab" onclick="showPanel('settings')">Settings</button>
+  <button class="nav-tab" onclick="showPanel('technical')">Tech Docs</button>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════════════════════════════
+     DASHBOARD
+═══════════════════════════════════════════════ -->
+<div class="panel active" id="panel-dashboard">
+  <div class="sec-head">
+    <div class="sec-title">Overview Dashboard</div>
+    <div class="sec-sub">Real-time validation status across all tested products</div>
+  </div>
+
+  <!-- Summary metrics -->
+  <div class="g4" style="margin-bottom:20px;">
+    <div class="mcard">
+      <div class="mcard-label">Products Tested</div>
+      <div class="mcard-val" id="d-total" style="color:var(--accent2);">4</div>
+      <div class="mcard-sub">total in database</div>
+    </div>
+    <div class="mcard">
+      <div class="mcard-label">Scale Candidates</div>
+      <div class="mcard-val" id="d-scale" style="color:var(--scale);">1</div>
+      <div class="mcard-sub">ready to scale now</div>
+    </div>
+    <div class="mcard">
+      <div class="mcard-label">Kill List</div>
+      <div class="mcard-val" id="d-kill" style="color:var(--kill);">2</div>
+      <div class="mcard-sub">stop spend immediately</div>
+    </div>
+    <div class="mcard">
+      <div class="mcard-label">Total Profit/Loss</div>
+      <div class="mcard-val" id="d-profit" style="color:var(--scale);">R0</div>
+      <div class="mcard-sub">net across all products</div>
+    </div>
+  </div>
+
+  <!-- Selected product verdict -->
+  <div id="dash-verdict" class="verdict-banner none">
+    <div>
+      <div class="verdict-label" id="dv-label">NO PRODUCT SELECTED</div>
+      <div class="verdict-title" id="dv-title">Select a product below</div>
+      <div class="verdict-reason" id="dv-reason">Click any product in the list to see its validation verdict and full metrics breakdown.</div>
+    </div>
+    <div class="verdict-score-wrap">
+      <div class="verdict-score" id="dv-score" style="color:var(--text3);">—</div>
+      <div class="verdict-score-label">Health Score</div>
+    </div>
+  </div>
+
+  <!-- Quick metrics of selected -->
+  <div class="g4" style="margin-bottom:20px;" id="dash-quick-metrics">
+    <div class="mcard"><div class="mcard-label">CTR</div><div class="mcard-val" id="dm-ctr" style="color:var(--text3);">—</div><div class="mcard-sub">clicks / impressions</div></div>
+    <div class="mcard"><div class="mcard-label">Conv. Rate</div><div class="mcard-val" id="dm-cvr" style="color:var(--text3);">—</div><div class="mcard-sub">purchases / clicks</div></div>
+    <div class="mcard"><div class="mcard-label">Cost Per Purchase</div><div class="mcard-val" id="dm-cpp" style="color:var(--text3);">—</div><div class="mcard-sub">ad spend / purchases</div></div>
+    <div class="mcard"><div class="mcard-label">Net Profit</div><div class="mcard-val" id="dm-profit" style="color:var(--text3);">—</div><div class="mcard-sub">after all costs</div></div>
+  </div>
+
+  <!-- Product list -->
+  <div class="card">
+    <div class="card-title">Product Watchlist — click to inspect</div>
+    <div id="dash-product-list"></div>
+    <div style="margin-top:14px;text-align:center;">
+      <button class="btn-sm" onclick="showPanel('input')">+ Add New Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     INPUT DATA
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-input">
+  <div class="sec-head">
+    <div class="sec-title">Data Input Layer</div>
+    <div class="sec-sub">Enter real ad performance and cost data — no estimates accepted in final calculations</div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <!-- Product identity -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Product Identity</div>
+        <div class="input-group">
+          <div class="input-label">Product Name</div>
+          <input type="text" id="i-name" placeholder="e.g. Magnetic Car Charger Mount">
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Test Phase <span class="input-hint">e.g. Phase 1</span></div>
+            <input type="text" id="i-phase" placeholder="Phase 1">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Supplier <span class="input-hint">Temu/SHEIN/etc</span></div>
+            <input type="text" id="i-supplier" placeholder="Temu">
+          </div>
+        </div>
+      </div>
+
+      <!-- Ad performance -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Ad Performance Data</div>
+        <div class="input-row3">
+          <div class="input-group">
+            <div class="input-label">Ad Spend (R)</div>
+            <input type="number" id="i-spend" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Impressions</div>
+            <input type="number" id="i-impressions" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Clicks</div>
+            <input type="number" id="i-clicks" placeholder="0">
+          </div>
+        </div>
+        <div class="input-row3">
+          <div class="input-group">
+            <div class="input-label">Add to Carts</div>
+            <input type="number" id="i-atc" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Init. Checkouts</div>
+            <input type="number" id="i-ic" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Purchases</div>
+            <input type="number" id="i-purchases" placeholder="0">
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Revenue (R)</div>
+            <input type="number" id="i-revenue" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Selling Price/Unit (R)</div>
+            <input type="number" id="i-sellprice" placeholder="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Cost breakdown -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Cost Breakdown — Every Rand Must Be Accounted For</div>
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Product Cost/Unit (R) <span class="input-hint">supplier</span></div>
+            <input type="number" id="i-cogs" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Shipping/Unit (R)</div>
+            <input type="number" id="i-shipping" placeholder="0">
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Customs/Unit (R)</div>
+            <input type="number" id="i-customs" placeholder="0">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Packaging/Unit (R)</div>
+            <input type="number" id="i-packaging" placeholder="0">
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Payment Gateway % <span class="input-hint">e.g. 3</span></div>
+            <input type="number" id="i-gateway" placeholder="3" step="0.1">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Other Costs/Unit (R)</div>
+            <input type="number" id="i-other" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live cost preview -->
+      <div class="card" id="cost-preview-card" style="margin-bottom:16px;">
+        <div class="card-title">Live Cost Preview</div>
+        <div id="cost-preview">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Enter cost data above to see breakdown...</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveProduct()">▶ Validate This Product</button>
+      <div id="save-msg" style="margin-top:10px;font-size:12px;font-family:var(--mono);color:var(--scale);display:none;">✓ Product saved and validated</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     METRICS ENGINE
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-metrics">
+  <div class="sec-head">
+    <div class="sec-title">Metrics Processing Engine</div>
+    <div class="sec-sub">All calculations with formulas — auto-updated from input data</div>
+  </div>
+
+  <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;" id="metrics-product-selector"></div>
+
+  <div class="g2">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Engagement Metrics</div>
+        <div id="m-engagement">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Select a product above to view metrics.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Conversion Funnel Rates</div>
+        <div id="m-conversion"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Profitability Metrics</div>
+        <div id="m-profitability"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Break-Even Analysis</div>
+        <div id="m-breakeven"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gauges -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Performance Gauges vs Thresholds</div>
+    <div id="m-gauges">
+      <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Select a product to view gauges.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     DECISION ENGINE
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-decision">
+  <div class="sec-head">
+    <div class="sec-title">Decision Engine</div>
+    <div class="sec-sub">Strict rule-based logic. No grey areas. Every decision includes full reasoning.</div>
+  </div>
+
+  <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;" id="decision-product-selector"></div>
+
+  <!-- Main verdict -->
+  <div id="decision-verdict" class="verdict-banner none">
+    <div>
+      <div class="verdict-label" id="dec-label">SELECT A PRODUCT</div>
+      <div class="verdict-title" id="dec-title">Awaiting Data</div>
+      <div class="verdict-reason" id="dec-reason">Choose a product above to run the decision engine.</div>
+    </div>
+    <div class="verdict-score-wrap">
+      <div class="verdict-score" id="dec-score" style="color:var(--text3);">—</div>
+      <div class="verdict-score-label">Health Score / 100</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Rule Evaluation — Each Rule Checked</div>
+        <div id="dec-rules">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Select a product to evaluate rules.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Diagnostic Flags</div>
+        <div id="dec-flags">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">No flags yet.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Next Action Checklist</div>
+        <div id="dec-actions">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Select a product to see recommended actions.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decision logic documentation -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Decision Logic — Exact Rules Applied</div>
+    <div class="g3">
+      <div style="background:var(--kill-bg);border:1px solid var(--kill-b);border-radius:var(--r);padding:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--kill);margin-bottom:10px;font-family:var(--mono);">KILL PRODUCT — any of these</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);line-height:1.9;">
+          • CTR &lt; threshold (bad ad or product)<br>
+          • Profit per unit &lt; R300 after all costs<br>
+          • CPP &gt; break-even CPA<br>
+          • Conv. rate &lt; minimum AND CPP &gt; max<br>
+          • Health score &lt; 35
+        </div>
+      </div>
+      <div style="background:var(--test-bg);border:1px solid var(--test-b);border-radius:var(--r);padding:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--test);margin-bottom:10px;font-family:var(--mono);">TEST MORE — borderline signals</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);line-height:1.9;">
+          • CTR ≥ threshold but conv. rate low<br>
+          • High ATC but low purchases (checkout issue)<br>
+          • Profitable but not enough data (&lt;10 purchases)<br>
+          • Health score 35–69<br>
+          • CPP within 20% of break-even
+        </div>
+      </div>
+      <div style="background:var(--scale-bg);border:1px solid var(--scale-b);border-radius:var(--r);padding:16px;">
+        <div style="font-size:12px;font-weight:700;color:var(--scale);margin-bottom:10px;font-family:var(--mono);">SCALE PRODUCT — all must be true</div>
+        <div style="font-size:11px;color:var(--text2);font-family:var(--mono);line-height:1.9;">
+          • CTR ≥ threshold<br>
+          • Conv. rate ≥ threshold<br>
+          • CPP &lt; max CPP threshold<br>
+          • Profit per unit ≥ R300<br>
+          • Health score ≥ 70<br>
+          • 10+ purchases (enough data)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     FUNNEL ANALYSIS
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-funnel">
+  <div class="sec-head">
+    <div class="sec-title">Funnel Analysis</div>
+    <div class="sec-sub">Where are customers dropping off? Find the exact leak in your funnel.</div>
+  </div>
+
+  <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;" id="funnel-product-selector"></div>
+
+  <div class="g2">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Conversion Funnel</div>
+        <div id="funnel-viz">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Select a product to see the funnel.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Drop-Off Diagnosis</div>
+        <div id="funnel-diagnosis">
+          <div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Funnel diagnosis will appear here.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Stage Benchmarks</div>
+        <table class="tbl">
+          <thead><tr><th>Stage</th><th>SA Benchmark</th><th>Good Rate</th></tr></thead>
+          <tbody>
+            <tr><td>CTR (Ad → Click)</td><td>1.0–2.0%</td><td style="color:var(--scale);">≥ 1.5%</td></tr>
+            <tr><td>Click → ATC</td><td>3–8%</td><td style="color:var(--scale);">≥ 5%</td></tr>
+            <tr><td>ATC → Checkout</td><td>40–65%</td><td style="color:var(--scale);">≥ 50%</td></tr>
+            <tr><td>Checkout → Purchase</td><td>50–80%</td><td style="color:var(--scale);">≥ 60%</td></tr>
+            <tr><td>Overall Conv. Rate</td><td>0.5–2%</td><td style="color:var(--scale);">≥ 1.5%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
+    <div class="card-title">Funnel Trend Over Time</div>
+    <div class="chart-wrap" style="height:220px;">
+      <canvas id="funnelChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     ALL PRODUCTS
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-products">
+  <div class="sec-head">
+    <div class="sec-title">All Products</div>
+    <div class="sec-sub">Full database of tested products with validation status</div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div id="all-products-list"></div>
+    <div style="margin-top:14px;text-align:center;">
+      <button class="btn-sm" onclick="showPanel('input')">+ Add New Product</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Comparison Table</div>
+    <div style="overflow-x:auto;">
+      <table class="tbl" id="comparison-table">
+        <thead>
+          <tr>
+            <th>Product</th><th>Status</th><th>Spend (R)</th>
+            <th>Revenue (R)</th><th>Purchases</th><th>CPP (R)</th>
+            <th>CTR</th><th>Conv%</th><th>Profit/Unit (R)</th><th>Health</th>
+          </tr>
+        </thead>
+        <tbody id="comparison-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SETTINGS
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-settings">
+  <div class="sec-head">
+    <div class="sec-title">Threshold Settings</div>
+    <div class="sec-sub">Adjust all decision thresholds — changes apply immediately to all products</div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">Decision Thresholds</div>
+      <div class="alert info" style="margin-bottom:16px;">
+        <div class="alert-title">Changing these values re-evaluates all products instantly.</div>
+        These are the minimum/maximum values a product must hit to avoid a kill signal.
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Minimum CTR (%)</div>
+        <input class="threshold-input" id="t-ctr" type="number" step="0.1" value="1.0">
+        <div class="threshold-unit">%</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Minimum Conversion Rate (%)</div>
+        <input class="threshold-input" id="t-cvr" type="number" step="0.1" value="1.5">
+        <div class="threshold-unit">%</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Maximum CPP (R)</div>
+        <input class="threshold-input" id="t-cpp" type="number" step="10" value="300">
+        <div class="threshold-unit">R</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Minimum Profit per Unit (R)</div>
+        <input class="threshold-input" id="t-profit" type="number" step="10" value="300">
+        <div class="threshold-unit">R</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Minimum ATC Rate (%)</div>
+        <input class="threshold-input" id="t-atc" type="number" step="0.5" value="3.0">
+        <div class="threshold-unit">%</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Min. Purchases for Scale Decision</div>
+        <input class="threshold-input" id="t-minpurch" type="number" step="1" value="10">
+        <div class="threshold-unit">#</div>
+      </div>
+      <div class="threshold-row">
+        <div class="threshold-name">Minimum Health Score to Scale</div>
+        <input class="threshold-input" id="t-minscore" type="number" step="5" value="70">
+        <div class="threshold-unit">/100</div>
+      </div>
+      <button class="btn-primary" onclick="applyThresholds()" style="margin-top:16px;">Apply & Re-evaluate All Products</button>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Current Threshold Summary</div>
+        <div id="threshold-summary"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Data Management</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn-sm" onclick="loadDemoData()" style="width:100%;padding:11px;">Load Demo Products (4 examples)</button>
+          <button class="btn-sm" onclick="exportData()" style="width:100%;padding:11px;">Export All Data (JSON)</button>
+          <button class="btn-danger" onclick="clearAllData()" style="width:100%;text-align:center;">Clear All Products</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TECHNICAL DOCS
+═══════════════════════════════════════════════ -->
+<div class="panel" id="panel-technical">
+  <div class="sec-head">
+    <div class="sec-title">Technical Architecture</div>
+    <div class="sec-sub">How to extend this system — API integrations, backend, automation</div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">System Architecture</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="border-left:3px solid var(--accent);padding-left:12px;">
+            <div style="font-size:13px;font-weight:700;">Data Input Layer</div>
+            <div style="font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:3px;">This form + localStorage now. Future: Meta Ads API, TikTok API, Shopify Webhooks → auto-populate fields every 6 hours.</div>
+          </div>
+          <div style="border-left:3px solid var(--scale);padding-left:12px;">
+            <div style="font-size:13px;font-weight:700;">Metrics Engine</div>
+            <div style="font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:3px;">Pure JS functions. All formulas run client-side. Backend version: Python/FastAPI endpoint /api/metrics/{product_id}.</div>
+          </div>
+          <div style="border-left:3px solid var(--test);padding-left:12px;">
+            <div style="font-size:13px;font-weight:700;">Decision Engine</div>
+            <div style="font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:3px;">Rule engine runs after every data update. Can be moved to server for scheduled auto-evaluation and Slack/email alerts.</div>
+          </div>
+          <div style="border-left:3px solid var(--kill);padding-left:12px;">
+            <div style="font-size:13px;font-weight:700;">Storage</div>
+            <div style="font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:3px;">localStorage for offline use. Upgrade path: PostgreSQL + Supabase (free tier) for cloud sync across devices.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Metrics Formulas Reference</div>
+        <div class="codeblock">
+<span class="cc">// All formulas used in this system</span>
+
+CTR           = clicks / impressions × 100
+CPC           = spend / clicks
+CVR           = purchases / clicks × 100
+ATC_rate      = atc / clicks × 100
+checkout_rate = ic / atc × 100
+
+CPP           = spend / purchases
+rev_per_purch = revenue / purchases
+
+gateway_cost  = sell_price × (gateway_pct / 100)
+total_unit_cost = cogs + shipping + customs
+                + packaging + other + gateway_cost
+
+profit_per_unit = sell_price - total_unit_cost
+total_profit    = (profit_per_unit × purchases) - spend
+
+<span class="cc">// Break-even CPA</span>
+breakeven_cpa = sell_price - total_unit_cost
+<span class="cc">// Max you can spend per purchase and still profit</span>
+
+<span class="cc">// Health score (0–100)</span>
+score = 0
+if CTR >= t_ctr:       score += 25
+if CVR >= t_cvr:       score += 25
+if CPP <= t_cpp:       score += 25
+if profit >= t_profit: score += 25
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Meta Ads API Integration (Future)</div>
+        <div class="codeblock">
+<span class="cc"># python: pull Meta Ads data</span>
+<span class="ck">from</span> facebook_business.api <span class="ck">import</span> FacebookAdsApi
+<span class="ck">from</span> facebook_business.adobjects.adset <span class="ck">import</span> AdSet
+
+FacebookAdsApi.init(access_token=<span class="cs">ACCESS_TOKEN</span>)
+
+<span class="ck">def</span> <span class="cf">fetch_adset_metrics</span>(adset_id: str):
+    adset = AdSet(adset_id)
+    insights = adset.get_insights(fields=[
+        <span class="cs">'spend'</span>, <span class="cs">'impressions'</span>, <span class="cs">'clicks'</span>,
+        <span class="cs">'actions'</span>, <span class="cs">'purchase_roas'</span>,
+        <span class="cs">'cost_per_action_type'</span>
+    ])
+    <span class="ck">return</span> normalize_meta_response(insights)
+
+<span class="cc"># Map Meta fields to PVE schema:</span>
+<span class="cc"># actions[action_type=add_to_cart] → atc</span>
+<span class="cc"># actions[action_type=purchase]    → purchases</span>
+<span class="cc"># actions[action_type=initiate_checkout] → ic</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Shopify Webhook Integration (Future)</div>
+        <div class="codeblock">
+<span class="cc"># Auto-receive orders from Shopify</span>
+<span class="ck">from</span> fastapi <span class="ck">import</span> FastAPI, Request
+app = FastAPI()
+
+<span class="cf">@app.post</span>(<span class="cs">"/webhook/shopify/orders"</span>)
+<span class="ck">async def</span> <span class="cf">shopify_order</span>(req: Request):
+    order = <span class="ck">await</span> req.json()
+    product_id = order[<span class="cs">"line_items"</span>][0][<span class="cs">"product_id"</span>]
+    
+    <span class="cc"># Update PVE database</span>
+    <span class="ck">await</span> db.increment(product_id, {
+        <span class="cs">"purchases"</span>: <span class="cv">1</span>,
+        <span class="cs">"revenue"</span>: float(order[<span class="cs">"total_price"</span>])
+    })
+    
+    <span class="cc"># Re-run decision engine</span>
+    verdict = decision_engine.evaluate(product_id)
+    <span class="ck">if</span> verdict == <span class="cs">"KILL"</span>:
+        <span class="ck">await</span> notify_slack(f<span class="cs">"⛔ Kill {product_id}"</span>)
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Upgrade Path — Local → Cloud</div>
+        <table class="tbl">
+          <thead><tr><th>Stage</th><th>Stack</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td>Now</td><td>This HTML file + localStorage</td><td style="color:var(--scale);">R0</td></tr>
+            <tr><td>Step 2</td><td>+ Supabase DB (cloud sync)</td><td style="color:var(--scale);">R0 free tier</td></tr>
+            <tr><td>Step 3</td><td>+ FastAPI backend + Meta API</td><td style="color:var(--test);">~R50/mo</td></tr>
+            <tr><td>Step 4</td><td>+ Shopify webhooks + Slack alerts</td><td style="color:var(--test);">~R80/mo</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end .main -->
+
+<script>
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+let products = JSON.parse(localStorage.getItem('pve_products') || '[]');
+let thresholds = JSON.parse(localStorage.getItem('pve_thresholds') || 'null') || {
+  ctr: 1.0, cvr: 1.5, cpp: 300, profit: 300,
+  atc: 3.0, minPurch: 10, minScore: 70
+};
+let selectedProductId = null;
+let funnelChartInst = null;
+
+// ════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  const map = {dashboard:0,input:1,metrics:2,decision:3,funnel:4,products:5,settings:6,technical:7};
+  if (map[id] !== undefined) document.querySelectorAll('.nav-tab')[map[id]].classList.add('active');
+  renderPanel(id);
+}
+
+function renderPanel(id) {
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'metrics') renderMetricsPanel();
+  if (id === 'decision') renderDecisionPanel();
+  if (id === 'funnel') renderFunnelPanel();
+  if (id === 'products') renderProductsPanel();
+  if (id === 'settings') renderSettings();
+}
+
+// ════════════════════════════════════════════════
+// FORMULAS
+// ════════════════════════════════════════════════
+function calcMetrics(p) {
+  const imp = p.impressions || 0;
+  const clk = p.clicks || 0;
+  const atc = p.atc || 0;
+  const ic  = p.ic || 0;
+  const pur = p.purchases || 0;
+  const rev = p.revenue || 0;
+  const spend = p.spend || 0;
+
+  const ctr     = imp  > 0 ? (clk / imp)  * 100 : 0;
+  const cpc     = clk  > 0 ? spend / clk        : 0;
+  const cvr     = clk  > 0 ? (pur / clk)  * 100 : 0;
+  const atcRate = clk  > 0 ? (atc / clk)  * 100 : 0;
+  const chkRate = atc  > 0 ? (ic  / atc)  * 100 : 0;
+  const cpp     = pur  > 0 ? spend / pur         : 0;
+  const revPur  = pur  > 0 ? rev / pur           : 0;
+
+  const gw = (p.gateway || 3) / 100;
+  const gwCost = (p.sellprice || 0) * gw;
+  const unitCost = (p.cogs||0)+(p.shipping||0)+(p.customs||0)+(p.packaging||0)+(p.other||0)+gwCost;
+  const profitUnit = (p.sellprice||0) - unitCost;
+  const totalProfit = (profitUnit * pur) - spend;
+  const beCPA = profitUnit; // max you can pay per purchase and break even
+
+  return { ctr, cpc, cvr, atcRate, chkRate, cpp, revPur, unitCost, profitUnit, totalProfit, beCPA, gwCost };
+}
+
+function calcScore(m) {
+  let s = 0;
+  if (m.ctr     >= thresholds.ctr)    s += 25;
+  else if (m.ctr >= thresholds.ctr*0.7) s += 12;
+  if (m.cvr     >= thresholds.cvr)    s += 25;
+  else if (m.cvr >= thresholds.cvr*0.7) s += 12;
+  if (m.cpp     <= thresholds.cpp && m.cpp > 0) s += 25;
+  else if (m.cpp <= thresholds.cpp*1.2 && m.cpp > 0) s += 12;
+  if (m.profitUnit >= thresholds.profit) s += 25;
+  else if (m.profitUnit >= thresholds.profit*0.7) s += 12;
+  return s;
+}
+
+function decide(p, m, score) {
+  const pur = p.purchases || 0;
+  const reasons = [];
+  const flags = [];
+  const actions = [];
+  let verdict = 'TEST';
+
+  // Hard kills
+  if (m.profitUnit < thresholds.profit && pur > 0) {
+    flags.push({ type:'kill', msg:`Profit per unit (R${m.profitUnit.toFixed(0)}) is below R${thresholds.profit} minimum. This product cannot be profitable at current costs.` });
+  }
+  if (m.cpp > m.beCPA && pur > 0 && m.beCPA > 0) {
+    flags.push({ type:'kill', msg:`CPP (R${m.cpp.toFixed(0)}) exceeds break-even CPA (R${m.beCPA.toFixed(0)}). Every sale is a net loss.` });
+  }
+  if (m.ctr < thresholds.ctr * 0.5 && p.impressions > 1000) {
+    flags.push({ type:'kill', msg:`CTR (${m.ctr.toFixed(2)}%) is critically low — less than half of minimum. The ad creative or product has no appeal.` });
+  }
+
+  // Checkout problem
+  if (m.atcRate >= thresholds.atc && m.chkRate < 40 && atcHasData(p)) {
+    flags.push({ type:'test', msg:`High ATC rate (${m.atcRate.toFixed(1)}%) but low checkout rate (${m.chkRate.toFixed(1)}%). Likely a checkout friction issue — check your checkout flow, payment options, and shipping costs display.` });
+  }
+  // Clicks but no purchase
+  if (p.clicks > 100 && pur === 0) {
+    flags.push({ type:'test', msg:`${p.clicks} clicks but 0 purchases. Could be product page issue, price objection, or targeting mismatch.` });
+  }
+
+  // Final verdict
+  const killFlags = flags.filter(f=>f.type==='kill').length;
+  if (score < 35 || killFlags > 0) {
+    verdict = 'KILL';
+  } else if (score >= 70 && pur >= thresholds.minPurch && m.profitUnit >= thresholds.profit) {
+    verdict = 'SCALE';
+  } else {
+    verdict = 'TEST';
+  }
+
+  // Reasons
+  if (verdict === 'KILL') {
+    reasons.push(`Health score is ${score}/100 — below 35 threshold.`);
+    killFlags > 0 && reasons.push('One or more hard kill conditions triggered.');
+    actions.push('Stop all ad spend immediately.');
+    actions.push('Do not order more inventory.');
+    actions.push('Review cost structure before reconsidering.');
+  } else if (verdict === 'SCALE') {
+    reasons.push(`All 4 core metrics pass. Health score ${score}/100 ≥ ${thresholds.minScore}.`);
+    reasons.push(`${pur} purchases — sufficient data for confident decision.`);
+    actions.push('Increase daily ad budget by 2× immediately.');
+    actions.push('Duplicate winning ad sets — do not change creative.');
+    actions.push('Ensure supplier has enough stock for increased volume.');
+    actions.push('Consider adding upsell or bundle offer.');
+  } else {
+    reasons.push(`Health score ${score}/100 — needs improvement before scaling.`);
+    if (pur < thresholds.minPurch) reasons.push(`Only ${pur} purchases — need at least ${thresholds.minPurch} for confident decision.`);
+    actions.push('Keep current ad budget. Do not increase or decrease yet.');
+    actions.push('Test 1 new ad creative while keeping current running.');
+    actions.push('Check product page — images, copy, trust signals.');
+    if (m.chkRate < 50) actions.push('Fix checkout: add more payment options, reduce friction.');
+  }
+
+  return { verdict, score, reasons, flags, actions };
+}
+
+function atcHasData(p) { return (p.atc || 0) > 0 && (p.ic || 0) > 0; }
+
+// ════════════════════════════════════════════════
+// SAVE PRODUCT
+// ════════════════════════════════════════════════
+function saveProduct() {
+  const name = document.getElementById('i-name').value.trim();
+  if (!name) { alert('Please enter a product name'); return; }
+
+  const p = {
+    id: Date.now().toString(),
+    name,
+    phase: document.getElementById('i-phase').value || 'Phase 1',
+    supplier: document.getElementById('i-supplier').value || '—',
+    spend:       parseFloat(document.getElementById('i-spend').value) || 0,
+    impressions: parseFloat(document.getElementById('i-impressions').value) || 0,
+    clicks:      parseFloat(document.getElementById('i-clicks').value) || 0,
+    atc:         parseFloat(document.getElementById('i-atc').value) || 0,
+    ic:          parseFloat(document.getElementById('i-ic').value) || 0,
+    purchases:   parseFloat(document.getElementById('i-purchases').value) || 0,
+    revenue:     parseFloat(document.getElementById('i-revenue').value) || 0,
+    sellprice:   parseFloat(document.getElementById('i-sellprice').value) || 0,
+    cogs:        parseFloat(document.getElementById('i-cogs').value) || 0,
+    shipping:    parseFloat(document.getElementById('i-shipping').value) || 0,
+    customs:     parseFloat(document.getElementById('i-customs').value) || 0,
+    packaging:   parseFloat(document.getElementById('i-packaging').value) || 0,
+    gateway:     parseFloat(document.getElementById('i-gateway').value) || 3,
+    other:       parseFloat(document.getElementById('i-other').value) || 0,
+    createdAt: new Date().toISOString()
+  };
+
+  products.push(p);
+  saveData();
+  document.getElementById('save-msg').style.display = 'block';
+  setTimeout(()=>{ document.getElementById('save-msg').style.display='none'; }, 2500);
+  clearInputForm();
+  selectedProductId = p.id;
+  renderDashboard();
+}
+
+function clearInputForm() {
+  ['i-name','i-phase','i-supplier','i-spend','i-impressions','i-clicks','i-atc','i-ic','i-purchases','i-revenue','i-sellprice','i-cogs','i-shipping','i-customs','i-packaging','i-gateway','i-other','i-other'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('cost-preview').innerHTML = '<div style="color:var(--text3);font-size:12px;font-family:var(--mono);">Enter cost data above to see breakdown...</div>';
+}
+
+// Live cost preview
+['i-cogs','i-shipping','i-customs','i-packaging','i-gateway','i-other','i-sellprice'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateCostPreview);
+});
+function updateCostPreview() {
+  const cogs = parseFloat(document.getElementById('i-cogs').value)||0;
+  const ship = parseFloat(document.getElementById('i-shipping').value)||0;
+  const cust = parseFloat(document.getElementById('i-customs').value)||0;
+  const pack = parseFloat(document.getElementById('i-packaging').value)||0;
+  const gw   = parseFloat(document.getElementById('i-gateway').value)||3;
+  const oth  = parseFloat(document.getElementById('i-other').value)||0;
+  const sell = parseFloat(document.getElementById('i-sellprice').value)||0;
+  const gwCost = sell*(gw/100);
+  const total = cogs+ship+cust+pack+gwCost+oth;
+  const profit = sell-total;
+  const profColor = profit>=thresholds.profit?'var(--scale)':profit>=0?'var(--test)':'var(--kill)';
+  document.getElementById('cost-preview').innerHTML = `
+    <div style="font-size:12px;font-family:var(--mono);color:var(--text2);">
+      ${row('Product Cost', cogs)}
+      ${row('Shipping', ship)}
+      ${row('Customs', cust)}
+      ${row('Packaging', pack)}
+      ${row('Gateway ('+gw+'%)', gwCost.toFixed(2))}
+      ${row('Other', oth)}
+      <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
+      ${row('Total Unit Cost', total.toFixed(2), 'var(--text)')}
+      <div style="display:flex;justify-content:space-between;margin-top:4px;">
+        <span style="font-weight:700;">Profit per Unit</span>
+        <span style="font-weight:700;color:${profColor};">R${profit.toFixed(2)} ${profit>=thresholds.profit?'✓':profit>=0?'⚠':'✗'}</span>
+      </div>
+    </div>`;
+}
+function row(label, val, color='var(--text2)') {
+  return `<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:${color};"><span>${label}</span><span>R${parseFloat(val).toFixed(2)}</span></div>`;
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+function renderDashboard() {
+  const list = document.getElementById('dash-product-list');
+  if (products.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:12px;">No products yet. <a href="#" onclick="showPanel('input');return false;" style="color:var(--accent2);">Add your first product →</a></div>`;
+    updateDashStats();
+    return;
+  }
+
+  list.innerHTML = products.map(p => {
+    const m = calcMetrics(p);
+    const sc = calcScore(m);
+    const d = decide(p, m, sc);
+    const cls = d.verdict==='KILL'?'kill-item':d.verdict==='SCALE'?'scale-item':d.verdict==='TEST'?'test-item':'none-item';
+    const profColor = m.totalProfit >= 0 ? 'pos' : 'neg';
+    const sel = selectedProductId === p.id ? 'selected' : '';
+    return `<div class="product-item ${cls} ${sel}" onclick="selectProduct('${p.id}')">
+      <div style="flex:1;">
+        <div class="pi-name">${p.name}</div>
+        <div class="pi-meta">${p.supplier} · ${p.phase} · ${p.purchases} purchases · Spend: R${p.spend}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="${d.verdict.toLowerCase()==='kill'?'pill kill':d.verdict.toLowerCase()==='scale'?'pill scale':'pill test'}">${d.verdict}</div>
+        <div class="pi-profit ${profColor}" style="margin-top:6px;">R${m.totalProfit.toFixed(0)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateDashStats();
+  if (selectedProductId) updateDashVerdict(selectedProductId);
+}
+
+function selectProduct(id) {
+  selectedProductId = id;
+  renderDashboard();
+  updateDashVerdict(id);
+}
+
+function updateDashVerdict(id) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  const m = calcMetrics(p);
+  const sc = calcScore(m);
+  const d = decide(p, m, sc);
+  const banner = document.getElementById('dash-verdict');
+  banner.className = 'verdict-banner ' + (d.verdict==='KILL'?'kill':d.verdict==='SCALE'?'scale':'test');
+  document.getElementById('dv-label').textContent = d.verdict + ' — ' + p.name;
+  document.getElementById('dv-title').textContent = d.verdict === 'KILL' ? 'Kill This Product' : d.verdict === 'SCALE' ? 'Scale This Product' : 'Keep Testing';
+  document.getElementById('dv-reason').textContent = d.reasons.join(' ');
+  const scoreEl = document.getElementById('dv-score');
+  scoreEl.textContent = sc;
+  scoreEl.style.color = sc>=70?'var(--scale)':sc>=35?'var(--test)':'var(--kill)';
+
+  // Quick metrics
+  const ctrColor = m.ctr>=thresholds.ctr?'var(--scale)':m.ctr>0?'var(--test)':'var(--kill)';
+  const cvrColor = m.cvr>=thresholds.cvr?'var(--scale)':m.cvr>0?'var(--test)':'var(--kill)';
+  const cppColor = m.cpp>0&&m.cpp<=thresholds.cpp?'var(--scale)':m.cpp>thresholds.cpp?'var(--kill)':'var(--text3)';
+  const profColor = m.profitUnit>=thresholds.profit?'var(--scale)':m.profitUnit>=0?'var(--test)':'var(--kill)';
+  document.getElementById('dm-ctr').textContent = m.ctr.toFixed(2)+'%';
+  document.getElementById('dm-ctr').style.color = ctrColor;
+  document.getElementById('dm-cvr').textContent = m.cvr.toFixed(2)+'%';
+  document.getElementById('dm-cvr').style.color = cvrColor;
+  document.getElementById('dm-cpp').textContent = m.cpp>0?'R'+m.cpp.toFixed(0):'—';
+  document.getElementById('dm-cpp').style.color = cppColor;
+  document.getElementById('dm-profit').textContent = 'R'+m.profitUnit.toFixed(0);
+  document.getElementById('dm-profit').style.color = profColor;
+}
+
+function updateDashStats() {
+  let scale=0, kill=0, totalProfit=0;
+  products.forEach(p => {
+    const m = calcMetrics(p);
+    const sc = calcScore(m);
+    const d = decide(p, m, sc);
+    if (d.verdict==='SCALE') scale++;
+    if (d.verdict==='KILL') kill++;
+    totalProfit += m.totalProfit;
+  });
+  document.getElementById('d-total').textContent = products.length;
+  document.getElementById('d-scale').textContent = scale;
+  document.getElementById('d-kill').textContent = kill;
+  const pEl = document.getElementById('d-profit');
+  pEl.textContent = 'R' + totalProfit.toFixed(0);
+  pEl.style.color = totalProfit >= 0 ? 'var(--scale)' : 'var(--kill)';
+}
+
+// ════════════════════════════════════════════════
+// METRICS PANEL
+// ════════════════════════════════════════════════
+function renderMetricsPanel() {
+  renderProductSelector('metrics-product-selector', 'selectForMetrics');
+  if (!selectedProductId && products.length > 0) selectedProductId = products[0].id;
+  if (selectedProductId) renderMetrics(selectedProductId);
+}
+function selectForMetrics(id) { selectedProductId = id; renderMetrics(id); renderProductSelector('metrics-product-selector','selectForMetrics'); }
+
+function renderMetrics(id) {
+  const p = products.find(x=>x.id===id); if (!p) return;
+  const m = calcMetrics(p);
+  const sc = calcScore(m);
+
+  // Engagement
+  document.getElementById('m-engagement').innerHTML = [
+    metricRow('CTR', m.ctr.toFixed(3)+'%', 'clicks ÷ impressions × 100', m.ctr>=thresholds.ctr),
+    metricRow('CPC', 'R'+m.cpc.toFixed(2), 'ad spend ÷ clicks', m.cpc<50),
+    metricRow('ATC Rate', m.atcRate.toFixed(2)+'%', 'add to carts ÷ clicks × 100', m.atcRate>=thresholds.atc),
+    metricRow('Checkout Rate', m.chkRate.toFixed(1)+'%', 'initiated checkouts ÷ add to carts × 100', m.chkRate>=50),
+  ].join('');
+
+  // Conversion
+  document.getElementById('m-conversion').innerHTML = [
+    metricRow('Conversion Rate', m.cvr.toFixed(3)+'%', 'purchases ÷ clicks × 100', m.cvr>=thresholds.cvr),
+    metricRow('Cost Per Purchase', 'R'+m.cpp.toFixed(2), 'ad spend ÷ purchases', m.cpp<=thresholds.cpp&&m.cpp>0),
+    metricRow('Revenue per Purchase', 'R'+m.revPur.toFixed(2), 'revenue ÷ purchases', m.revPur>0),
+  ].join('');
+
+  // Profitability
+  document.getElementById('m-profitability').innerHTML = [
+    metricRow('Total Unit Cost', 'R'+m.unitCost.toFixed(2), 'cogs+ship+customs+pkg+gateway+other', true),
+    metricRow('Profit per Unit', 'R'+m.profitUnit.toFixed(2), 'sell price − total unit cost', m.profitUnit>=thresholds.profit),
+    metricRow('Total Net Profit', 'R'+m.totalProfit.toFixed(2), '(profit/unit × purchases) − ad spend', m.totalProfit>0),
+    metricRow('Gateway Cost/Unit', 'R'+m.gwCost.toFixed(2), 'sell price × gateway %', true),
+  ].join('');
+
+  // Break-even
+  document.getElementById('m-breakeven').innerHTML = [
+    metricRow('Break-Even CPA', 'R'+m.beCPA.toFixed(2), 'max CPP to still profit = profit per unit', true),
+    metricRow('CPP vs Break-Even', m.cpp>0?((m.cpp/m.beCPA*100).toFixed(1)+'% of BEP'):'—', 'should be < 100%', m.cpp>0&&m.cpp<=m.beCPA),
+    metricRow('Spend to Break Even', p.purchases>0?'R'+(m.unitCost*p.purchases).toFixed(0):'—', 'min revenue needed to cover all unit costs', true),
+  ].join('');
+
+  // Gauges
+  const gauges = [
+    { label:'CTR', val:m.ctr, max:Math.max(5,m.ctr*1.5), threshold:thresholds.ctr, unit:'%', color:'var(--accent)' },
+    { label:'Conversion Rate', val:m.cvr, max:Math.max(5,m.cvr*1.5), threshold:thresholds.cvr, unit:'%', color:'var(--scale)' },
+    { label:'CPP', val:m.cpp, max:Math.max(600,m.cpp*1.2), threshold:thresholds.cpp, unit:'R', invert:true, color:'var(--test)' },
+    { label:'Profit/Unit', val:m.profitUnit, max:Math.max(1000,m.profitUnit*1.5), threshold:thresholds.profit, unit:'R', color:'var(--scale)' },
+    { label:'ATC Rate', val:m.atcRate, max:Math.max(15,m.atcRate*1.5), threshold:thresholds.atc, unit:'%', color:'var(--accent2)' },
+  ];
+  document.getElementById('m-gauges').innerHTML = gauges.map(g => {
+    const pct = g.max>0?Math.min(100,(g.val/g.max)*100):0;
+    const tpct = g.max>0?(g.threshold/g.max)*100:0;
+    const good = g.invert ? g.val<=g.threshold&&g.val>0 : g.val>=g.threshold;
+    const barColor = good ? 'var(--scale)' : g.val>0 ? 'var(--test)' : 'var(--bg5)';
+    return `<div class="gauge-row">
+      <div class="gauge-label"><span>${g.label}</span><span style="font-weight:700;">${g.unit==='R'?'R':''}${g.val.toFixed(2)}${g.unit==='%'?'%':''} <span style="font-weight:400;color:var(--text3);">(${g.invert?'max':'min'}: ${g.unit==='R'?'R':''}${g.threshold}${g.unit==='%'?'%':''})</span></span></div>
+      <div class="gauge-track">
+        <div class="gauge-fill" style="width:${pct}%;background:${barColor};"></div>
+        <div class="gauge-threshold" style="left:${Math.min(tpct,100)}%;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function metricRow(name, val, formula, good) {
+  const color = good?'var(--scale)':'var(--kill)';
+  const pill = good?'<span class="pill good">PASS</span>':'<span class="pill bad">FLAG</span>';
+  return `<div class="metric-row">
+    <div><div class="metric-name">${name}</div><div class="metric-formula">${formula}</div></div>
+    <div class="metric-right"><div class="metric-value" style="color:${color};">${val}</div>${pill}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════
+// DECISION PANEL
+// ════════════════════════════════════════════════
+function renderDecisionPanel() {
+  renderProductSelector('decision-product-selector','selectForDecision');
+  if (!selectedProductId && products.length > 0) selectedProductId = products[0].id;
+  if (selectedProductId) renderDecision(selectedProductId);
+}
+function selectForDecision(id) { selectedProductId = id; renderDecision(id); renderProductSelector('decision-product-selector','selectForDecision'); }
+
+function renderDecision(id) {
+  const p = products.find(x=>x.id===id); if (!p) return;
+  const m = calcMetrics(p);
+  const sc = calcScore(m);
+  const d = decide(p, m, sc);
+
+  const banner = document.getElementById('decision-verdict');
+  banner.className = 'verdict-banner ' + (d.verdict==='KILL'?'kill':d.verdict==='SCALE'?'scale':'test');
+  document.getElementById('dec-label').textContent = p.name + ' — ' + p.phase;
+  document.getElementById('dec-title').textContent = d.verdict==='KILL'?'KILL THIS PRODUCT':d.verdict==='SCALE'?'SCALE THIS PRODUCT':'KEEP TESTING';
+  document.getElementById('dec-reason').textContent = d.reasons.join(' ');
+  const se = document.getElementById('dec-score');
+  se.textContent = sc;
+  se.style.color = sc>=70?'var(--scale)':sc>=35?'var(--test)':'var(--kill)';
+
+  // Rules
+  const rules = [
+    { name:'CTR ≥ '+thresholds.ctr+'%', pass:m.ctr>=thresholds.ctr, val:m.ctr.toFixed(3)+'%', weight:25 },
+    { name:'Conv. Rate ≥ '+thresholds.cvr+'%', pass:m.cvr>=thresholds.cvr, val:m.cvr.toFixed(3)+'%', weight:25 },
+    { name:'CPP ≤ R'+thresholds.cpp, pass:m.cpp<=thresholds.cpp&&m.cpp>0, val:m.cpp>0?'R'+m.cpp.toFixed(0):'No purchases', weight:25 },
+    { name:'Profit/Unit ≥ R'+thresholds.profit, pass:m.profitUnit>=thresholds.profit, val:'R'+m.profitUnit.toFixed(0), weight:25 },
+    { name:`Purchases ≥ ${thresholds.minPurch} (data confidence)`, pass:p.purchases>=thresholds.minPurch, val:p.purchases+' purchases', weight:0 },
+  ];
+  document.getElementById('dec-rules').innerHTML = rules.map(r => `
+    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:18px;width:22px;color:${r.pass?'var(--scale)':'var(--kill)'};">${r.pass?'✓':'✗'}</div>
+      <div style="flex:1;font-size:12px;font-family:var(--mono);">${r.name}</div>
+      <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:${r.pass?'var(--scale)':'var(--kill)'};">${r.val}</div>
+      ${r.weight>0?`<div style="font-size:10px;color:var(--text3);font-family:var(--mono);">+${r.weight}pts</div>`:''}
+    </div>`).join('');
+
+  // Flags
+  if (d.flags.length === 0) {
+    document.getElementById('dec-flags').innerHTML = '<div style="color:var(--scale);font-size:12px;font-family:var(--mono);">✓ No critical flags detected.</div>';
+  } else {
+    document.getElementById('dec-flags').innerHTML = d.flags.map(f =>
+      `<div class="alert ${f.type}" style="margin-bottom:8px;"><div class="alert-title">${f.type.toUpperCase()} FLAG</div>${f.msg}</div>`
+    ).join('');
+  }
+
+  // Actions
+  document.getElementById('dec-actions').innerHTML = d.actions.map((a,i) =>
+    `<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="width:20px;height:20px;border-radius:50%;background:var(--bg5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text2);flex-shrink:0;">${i+1}</div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--text2);">${a}</div>
+    </div>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════
+// FUNNEL PANEL
+// ════════════════════════════════════════════════
+function renderFunnelPanel() {
+  renderProductSelector('funnel-product-selector','selectForFunnel');
+  if (!selectedProductId && products.length > 0) selectedProductId = products[0].id;
+  if (selectedProductId) renderFunnel(selectedProductId);
+  initFunnelChart();
+}
+function selectForFunnel(id) { selectedProductId = id; renderFunnel(id); renderProductSelector('funnel-product-selector','selectForFunnel'); }
+
+function renderFunnel(id) {
+  const p = products.find(x=>x.id===id); if (!p) return;
+  const m = calcMetrics(p);
+  const imp = p.impressions||0, clk=p.clicks||0, atc=p.atc||0, ic=p.ic||0, pur=p.purchases||0;
+  const max = imp||1;
+
+  const stages = [
+    { label:'Impressions', val:imp, pct:100, color:'#5b7fff', drop:null },
+    { label:'Clicks', val:clk, pct:imp>0?(clk/imp*100):0, color:'#8ba4ff', drop:imp>0?((1-clk/imp)*100).toFixed(1)+'% dropped':null },
+    { label:'Add to Cart', val:atc, pct:clk>0?(atc/clk*100):0, color:'#f5a623', drop:clk>0?((1-atc/clk)*100).toFixed(1)+'% dropped':null },
+    { label:'Checkout', val:ic, pct:atc>0?(ic/atc*100):0, color:'#ff8c42', drop:atc>0?((1-ic/atc)*100).toFixed(1)+'% dropped':null },
+    { label:'Purchase', val:pur, pct:ic>0?(pur/ic*100):0, color:'#00d68f', drop:ic>0?((1-pur/ic)*100).toFixed(1)+'% dropped':null },
+  ];
+
+  document.getElementById('funnel-viz').innerHTML = stages.map(s =>
+    `<div class="funnel-stage">
+      <div class="funnel-label">${s.label}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar-track">
+          <div class="funnel-bar-fill" style="width:${Math.max(s.pct,2)}%;background:${s.color};color:${s.label==='Purchase'?'#001a0e':'#fff'};">
+            ${s.val.toLocaleString()}
+          </div>
+        </div>
+      </div>
+      <div class="funnel-pct" style="color:${s.color};">${s.pct.toFixed(1)}%</div>
+      <div class="funnel-drop" style="color:var(--kill);font-size:10px;">${s.drop&&s.drop!=='null% dropped'?s.drop:''}</div>
+    </div>`
+  ).join('');
+
+  // Diagnosis
+  const diag = [];
+  if (m.ctr < thresholds.ctr) diag.push({ type:'kill', title:'Weak Ad / Wrong Audience', msg:`CTR ${m.ctr.toFixed(2)}% is below ${thresholds.ctr}% minimum. Fix: test new creatives, narrow audience, change hook.` });
+  if (m.atcRate < thresholds.atc && clk > 50) diag.push({ type:'test', title:'Poor Product Page', msg:`Only ${m.atcRate.toFixed(1)}% of clicks add to cart. Fix: better images, stronger copy, social proof, price check.` });
+  if (m.chkRate < 50 && atc > 5) diag.push({ type:'test', title:'Checkout Friction', msg:`Only ${m.chkRate.toFixed(1)}% proceed to checkout. Fix: add payment options, show trust badges, check shipping cost display.` });
+  if (ic > 5 && pur/ic < 0.5) diag.push({ type:'test', title:'Payment / Trust Issue', msg:`${(pur/ic*100).toFixed(1)}% of checkouts complete. Fix: add Yoco/PayFast/Snapscan, show security badges, reduce required fields.` });
+  if (diag.length === 0) diag.push({ type:'scale', title:'Funnel Looks Healthy', msg:'No major drop-off points detected. Focus on increasing top-of-funnel traffic.' });
+
+  document.getElementById('funnel-diagnosis').innerHTML = diag.map(d =>
+    `<div class="alert ${d.type}" style="margin-bottom:8px;"><div class="alert-title">${d.title}</div>${d.msg}</div>`
+  ).join('');
+}
+
+function initFunnelChart() {
+  if (funnelChartInst) return;
+  const ctx = document.getElementById('funnelChart');
+  if (!ctx) return;
+  const labels = products.map(p=>p.name.substring(0,20)+(p.name.length>20?'…':''));
+  const ctrData = products.map(p=>calcMetrics(p).ctr);
+  const cvrData = products.map(p=>calcMetrics(p).cvr);
+  funnelChartInst = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: labels.length?labels:['No products'],
+      datasets:[
+        { label:'CTR %', data:ctrData.length?ctrData:[0], backgroundColor:'rgba(91,127,255,0.7)', borderRadius:4 },
+        { label:'Conv. Rate %', data:cvrData.length?cvrData:[0], backgroundColor:'rgba(0,214,143,0.7)', borderRadius:4 },
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8890b0',boxWidth:10,font:{size:11}}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8890b0',font:{size:11}}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8890b0',font:{size:11}},beginAtZero:true}
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════
+// PRODUCTS PANEL
+// ════════════════════════════════════════════════
+function renderProductsPanel() {
+  const list = document.getElementById('all-products-list');
+  if (products.length===0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-family:var(--mono);font-size:12px;">No products. Add one via Input Data tab.</div>';
+    document.getElementById('comparison-tbody').innerHTML = '';
+    return;
+  }
+  list.innerHTML = products.map(p => {
+    const m = calcMetrics(p);
+    const sc = calcScore(m);
+    const d = decide(p, m, sc);
+    const cls = d.verdict==='KILL'?'kill-item':d.verdict==='SCALE'?'scale-item':d.verdict==='TEST'?'test-item':'none-item';
+    return `<div class="product-item ${cls}">
+      <div style="flex:1;">
+        <div class="pi-name">${p.name}</div>
+        <div class="pi-meta">${p.supplier} · ${p.phase} · Added: ${new Date(p.createdAt).toLocaleDateString()}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="${d.verdict==='KILL'?'pill kill':d.verdict==='SCALE'?'pill scale':'pill test'}">${d.verdict}</span>
+        <button class="btn-sm" onclick="selectAndGoTo('${p.id}','decision')">Inspect</button>
+        <button class="btn-danger" style="padding:5px 10px;font-size:11px;" onclick="deleteProduct('${p.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Comparison table
+  document.getElementById('comparison-tbody').innerHTML = products.map(p => {
+    const m = calcMetrics(p);
+    const sc = calcScore(m);
+    const d = decide(p, m, sc);
+    const statusCell = d.verdict==='KILL'?`<span class="pill kill">KILL</span>`:d.verdict==='SCALE'?`<span class="pill scale">SCALE</span>`:`<span class="pill test">TEST</span>`;
+    const profColor = m.profitUnit>=thresholds.profit?'var(--scale)':m.profitUnit>=0?'var(--test)':'var(--kill)';
+    return `<tr>
+      <td style="font-weight:700;">${p.name}</td>
+      <td>${statusCell}</td>
+      <td>R${p.spend}</td>
+      <td>R${p.revenue}</td>
+      <td>${p.purchases}</td>
+      <td>${m.cpp>0?'R'+m.cpp.toFixed(0):'—'}</td>
+      <td>${m.ctr.toFixed(2)}%</td>
+      <td>${m.cvr.toFixed(2)}%</td>
+      <td style="color:${profColor};font-weight:700;">R${m.profitUnit.toFixed(0)}</td>
+      <td style="font-weight:700;color:${sc>=70?'var(--scale)':sc>=35?'var(--test)':'var(--kill)'};">${sc}</td>
+    </tr>`;
+  }).join('');
+}
+
+function selectAndGoTo(id, panel) { selectedProductId = id; showPanel(panel); }
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  products = products.filter(p=>p.id!==id);
+  if (selectedProductId===id) selectedProductId = products.length>0?products[0].id:null;
+  saveData();
+  renderProductsPanel();
+  renderDashboard();
+}
+
+// ════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById('t-ctr').value     = thresholds.ctr;
+  document.getElementById('t-cvr').value     = thresholds.cvr;
+  document.getElementById('t-cpp').value     = thresholds.cpp;
+  document.getElementById('t-profit').value  = thresholds.profit;
+  document.getElementById('t-atc').value     = thresholds.atc;
+  document.getElementById('t-minpurch').value= thresholds.minPurch;
+  document.getElementById('t-minscore').value= thresholds.minScore;
+  renderThresholdSummary();
+}
+
+function renderThresholdSummary() {
+  document.getElementById('threshold-summary').innerHTML = `
+    <div style="font-size:12px;font-family:var(--mono);color:var(--text2);display:flex;flex-direction:column;gap:8px;">
+      ${trow('Min CTR', thresholds.ctr+'%')}
+      ${trow('Min Conversion Rate', thresholds.cvr+'%')}
+      ${trow('Max CPP', 'R'+thresholds.cpp)}
+      ${trow('Min Profit/Unit', 'R'+thresholds.profit)}
+      ${trow('Min ATC Rate', thresholds.atc+'%')}
+      ${trow('Min Purchases for Scale', thresholds.minPurch)}
+      ${trow('Min Health Score to Scale', thresholds.minScore+'/100')}
+    </div>`;
+}
+
+function trow(label, val) {
+  return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+    <span>${label}</span><span style="font-weight:700;color:var(--accent2);">${val}</span></div>`;
+}
+
+function applyThresholds() {
+  thresholds.ctr      = parseFloat(document.getElementById('t-ctr').value)||1.0;
+  thresholds.cvr      = parseFloat(document.getElementById('t-cvr').value)||1.5;
+  thresholds.cpp      = parseFloat(document.getElementById('t-cpp').value)||300;
+  thresholds.profit   = parseFloat(document.getElementById('t-profit').value)||300;
+  thresholds.atc      = parseFloat(document.getElementById('t-atc').value)||3.0;
+  thresholds.minPurch = parseInt(document.getElementById('t-minpurch').value)||10;
+  thresholds.minScore = parseInt(document.getElementById('t-minscore').value)||70;
+  saveData();
+  renderThresholdSummary();
+  renderDashboard();
+  alert('Thresholds updated. All products re-evaluated.');
+}
+
+// ════════════════════════════════════════════════
+// DEMO DATA
+// ════════════════════════════════════════════════
+function loadDemoData() {
+  if (!confirm('This will add 4 demo products. Continue?')) return;
+  const demos = [
+    { id:'demo1', name:'Magnetic Car Charger Mount', phase:'Phase 1', supplier:'Temu', spend:800, impressions:85000, clicks:1190, atc:72, ic:45, purchases:17, revenue:8483, sellprice:499, cogs:95, shipping:115, customs:0, packaging:20, gateway:3, other:0, createdAt: new Date().toISOString() },
+    { id:'demo2', name:'Silicone Cable Organizer', phase:'Phase 1', supplier:'Temu', spend:500, impressions:42000, clicks:378, atc:8, ic:3, purchases:2, revenue:598, sellprice:299, cogs:45, shipping:115, customs:0, packaging:15, gateway:3, other:0, createdAt: new Date().toISOString() },
+    { id:'demo3', name:'Pet Slow Feeder Lick Mat', phase:'Phase 2', supplier:'Temu', spend:1200, impressions:95000, clicks:1520, atc:91, ic:58, purchases:22, revenue:8778, sellprice:399, cogs:55, shipping:115, customs:0, packaging:20, gateway:3, other:0, createdAt: new Date().toISOString() },
+    { id:'demo4', name:'Heated Eye Massager', phase:'Phase 1', supplier:'Temu', spend:600, impressions:38000, clicks:342, atc:11, ic:4, purchases:1, revenue:549, sellprice:549, cogs:120, shipping:115, customs:0, packaging:20, gateway:3, other:0, createdAt: new Date().toISOString() },
+  ];
+  demos.forEach(d => { if (!products.find(p=>p.id===d.id)) products.push(d); });
+  selectedProductId = 'demo1';
+  saveData();
+  renderDashboard();
+  alert('4 demo products loaded!');
+}
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+function renderProductSelector(containerId, fn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (products.length===0) { el.innerHTML='<div style="color:var(--text3);font-size:12px;font-family:var(--mono);">No products yet.</div>'; return; }
+  el.innerHTML = products.map(p =>
+    `<button class="btn-sm ${selectedProductId===p.id?'active':''}" onclick="${fn}('${p.id}')">${p.name.substring(0,30)}</button>`
+  ).join('');
+}
+
+function saveData() {
+  localStorage.setItem('pve_products', JSON.stringify(products));
+  localStorage.setItem('pve_thresholds', JSON.stringify(thresholds));
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({products,thresholds},null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'pve-data-' + Date.now() + '.json'; a.click();
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL products permanently?')) return;
+  products = []; selectedProductId = null;
+  saveData(); renderDashboard();
+  alert('All data cleared.');
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+renderDashboard();
+renderSettings();
+</script>
+</body>
+</html>
